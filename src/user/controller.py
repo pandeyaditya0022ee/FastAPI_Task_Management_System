@@ -1,6 +1,6 @@
 from src.user.models import UserModel
-from fastapi import HTTPException, status, Request,BackgroundTasks
-from src.user.dtos import UserSchema, LoginSchema
+from fastapi import HTTPException, status, Request, BackgroundTasks
+from src.user.dtos import UserSchema, LoginSchema ,UpdateSchema
 from sqlalchemy.orm import Session
 from pwdlib import PasswordHash
 import jwt
@@ -20,7 +20,7 @@ def verify_password(plain_password, hashed_password):
     return password_hash.verify(plain_password, hashed_password)
 
 
-async def register(body: UserSchema, db: Session,bg_task:BackgroundTasks):
+async def register(body: UserSchema, db: Session, bg_task: BackgroundTasks):
     # validationg user
     is_user = db.query(UserModel).filter(UserModel.username == body.username).first()
     if is_user:
@@ -41,11 +41,10 @@ async def register(body: UserSchema, db: Session,bg_task:BackgroundTasks):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
-    #sending mail
+
+    # sending mail
     # await email_send([new_user.email])
-    bg_task.add_task(email_send,[new_user.email])
-    
+    bg_task.add_task(email_send, [new_user.email])
 
     return new_user
 
@@ -104,8 +103,53 @@ def is_authenticated(request: Request, db: Session):
             )
 
         return user
-    
+
     except InvalidTokenError:
         raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED, detail="You Are Unauthoroized"
-                    )
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="You Are Unauthoroized"
+        )
+
+
+def delete_user(user_id: int, db: Session, user: UserModel):
+    _user: UserModel = db.query(UserModel).get(user_id)
+    if not _user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found"
+        )
+
+    if _user.id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="You Are Unauthoroized"
+        )
+        
+    db.delete(user)
+    db.commit()
+    
+    return None
+
+
+def update_user(body:UpdateSchema,user_id:int,db:Session,user:UserModel):
+    new_data : UserModel = db.query(UserModel).get(user_id)
+    
+    if not new_data:
+        raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found"
+                )
+    if new_data.id != user.id:
+        raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="You Are Unauthoroized"
+                )
+    
+    body = body.model_dump(exclude_unset=True)
+    
+    if "password" in body:
+        body["password"] = get_password_hash(body["password"])
+    
+    for key, value in body.items():
+        setattr(new_data,key,value)
+        
+    db.add(new_data)
+    db.commit()
+    db.refresh(new_data)
+    
+    return new_data

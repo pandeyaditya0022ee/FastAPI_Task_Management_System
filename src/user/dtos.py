@@ -5,6 +5,10 @@ class UserSchema(BaseModel):
     username : str
     password : str
     email : str
+class UpdateSchema(BaseModel):
+    name :str | None = None
+    password : str | None = None
+    email : str | None = None
     
 class UserResponseSchema(BaseModel):
     id:int
@@ -16,4 +20,4 @@ class UserResponseSchema(BaseModel):
 class LoginSchema(BaseModel):
     username : str
     password : str
-    
+
