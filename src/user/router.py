@@ -1,4 +1,4 @@
-from fastapi import APIRouter , status,Depends,Request
+from fastapi import APIRouter , status,Depends,Request,BackgroundTasks
 from src.user import controller
 from src.user.dtos import UserSchema, UserResponseSchema, LoginSchema
 from src.utils.db import get_db
@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 user_router = APIRouter(prefix="/user")
 
 @user_router.post("/register",response_model= UserResponseSchema,status_code=status.HTTP_201_CREATED)
-def regester(body:UserSchema,db:Session = Depends(get_db)):
-    return controller.register(body,db)
+async def regester(body:UserSchema,bg_task : BackgroundTasks,db:Session = Depends(get_db)):
+    return await controller.register(body,db,bg_task)
 
 
 @user_router.post("/login",status_code=status.HTTP_200_OK)
